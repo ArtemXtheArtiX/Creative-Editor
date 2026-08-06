@@ -58,6 +58,7 @@ public class KeyInputHandler {
             ItemStack itemToEdit = ItemStack.EMPTY;
             int slotIndex = -1;
 
+            // Если открыт инвентарь/сундук, пытаемся взять предмет под курсором
             if (mc.screen instanceof ContainerScreen) {
                 Slot hoveredSlot = getHoveredSlot(mc.screen);
                 if (hoveredSlot != null && hoveredSlot.hasItem()) {
@@ -66,6 +67,7 @@ public class KeyInputHandler {
                 }
             }
 
+            // Если слот пуст или инвентарь закрыт - берем предмет в руке
             if (itemToEdit.isEmpty()) {
                 itemToEdit = mc.player.getMainHandItem();
             }
