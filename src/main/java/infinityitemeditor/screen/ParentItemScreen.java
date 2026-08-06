@@ -55,22 +55,21 @@ public class ParentItemScreen extends ParentScreen {
 
         if (hasEssButtons) {
             int bwidth = 68;
-            int posX = width / 2 - (bwidth / 2);
-            int posY = height - 42;
+            int posX = width / 2 - (bwidth * 2) - 1;
+            int posY = height - 32;
 
-            // Всегда добавляем отступ, независимо от lastScreen
-            posY += 10;
-
-            backButton = addButton(new StyledButton(posX - bwidth - 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.back"), this::back));
-            resetButton = addButton(new StyledButton(posX, posY, bwidth, 20, new TranslationTextComponent("gui.main.reset"), this::reset));
-            saveButton = addButton(new StyledButton(posX + bwidth + 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.save"), this::save));
+            backButton = addButton(new StyledButton(posX, posY, bwidth, 20, new TranslationTextComponent("gui.main.back"), this::back));
+            resetButton = addButton(new StyledButton(posX + bwidth + 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.reset"), this::reset));
+            saveButton = addButton(new StyledButton(posX + (bwidth + 1) * 2, posY, bwidth, 20, new TranslationTextComponent("gui.main.save"), this::save));
+            dropButton = addButton(new StyledButton(posX + (bwidth + 1) * 3, posY, bwidth, 20, new TranslationTextComponent("gui.main.drop"), this::drop));
 
             if (!minecraft.player.isCreative() && !minecraft.hasSingleplayerServer()) {
                 saveButton.active = false;
+                dropButton.active = false;
             }
 
             if (renderColorHelper) {
-                colorHelperWidget = new ColorHelperWidget(children, (width - posX - bwidth * 3 - 10), 30, width, height);
+                colorHelperWidget = new ColorHelperWidget(children, (width - posX - bwidth * 4 - 10), 30, width, height);
                 renderWidgets.add(colorHelperWidget);
             }
         }
@@ -103,12 +102,11 @@ public class ParentItemScreen extends ParentScreen {
     public static void saveItem(DataItem item, Minecraft minecraft) {
         if (item.getItem().getItem() != Items.AIR) {
             int slotId = item.getSlot().get();
-            
-            // Если слот не задан (0) или вне диапазона инвентаря, используем выбранный слот хотбара
+
             if (slotId < 0 || slotId > 40) {
                 slotId = 36 + minecraft.player.inventory.selected;
             }
-            
+
             if (minecraft.hasSingleplayerServer()) {
                 minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
             } else {
@@ -175,7 +173,9 @@ public class ParentItemScreen extends ParentScreen {
     public void overlayRender(MatrixStack matrix, int mouseX, int mouseY, float p3, Color color) {
         super.overlayRender(matrix, mouseX, mouseY, p3, color);
 
-        GuiUtil.addToolTip(matrix, this, dropButton, mouseX, mouseY, I18n.get("gui.main.copyclipboard"));
+        if (dropButton != null) {
+            GuiUtil.addToolTip(matrix, this, dropButton, mouseX, mouseY, I18n.get("gui.main.copyclipboard"));
+        }
 
         if (renderItem) {
             renderItem(matrix, mouseX, mouseY, color, item);
