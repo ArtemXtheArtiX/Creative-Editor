@@ -103,16 +103,13 @@ public class ParentItemScreen extends ParentScreen {
         if (item.getItem().getItem() != Items.AIR) {
             int slotId = item.getSlot().get();
 
-            // Если слот равен 0 (значение по умолчанию для предмета в руке),
-            // используем выбранный слот хотбара
-            if (slotId == 0) {
+            if (slotId < 0 || slotId > 45) {
                 slotId = 36 + minecraft.player.inventory.selected;
             }
 
             if (minecraft.hasSingleplayerServer()) {
                 minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
-                // Принудительно обновляем клиентский инвентарь для синхронизации
-                minecraft.player.inventory.setItem(slotId, item.getItemStack());
+                minecraft.player.inventory.setItem(slotId >= 36 && slotId <= 44 ? slotId - 36 : (slotId >= 9 && slotId <= 35 ? slotId : -1), item.getItemStack());
             } else {
                 minecraft.getConnection().send(new CCreativeInventoryActionPacket(slotId, item.getItemStack()));
             }
