@@ -103,7 +103,8 @@ public class ParentItemScreen extends ParentScreen {
         if (item.getItem().getItem() != Items.AIR) {
             int slotId = item.getSlot().get();
 
-            if (slotId < 5 || slotId > 45) {
+            // Если слот не был определен (например, вне инвентаря) или выходит за рамки inventoryMenu
+            if (slotId < 0 || slotId > 45) {
                 slotId = 36 + minecraft.player.inventory.selected;
             }
 
