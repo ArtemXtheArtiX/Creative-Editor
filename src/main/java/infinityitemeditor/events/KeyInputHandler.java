@@ -72,7 +72,7 @@ public class KeyInputHandler {
                         } else if (invIndex >= 9 && invIndex <= 35) {
                             slotIndex = invIndex;
                         } else if (invIndex >= 36 && invIndex <= 39) {
-                            slotIndex = 41 - invIndex;
+                            slotIndex = 44 - invIndex;
                         } else if (invIndex == 40) {
                             slotIndex = 45;
                         }
