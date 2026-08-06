@@ -2,21 +2,30 @@ package infinityitemeditor.events;
 
 import infinityitemeditor.InfinityItemEditor;
 import infinityitemeditor.data.DataItem;
+import infinityitemeditor.data.base.DataString;
+import infinityitemeditor.data.base.DataUUID;
+import infinityitemeditor.saving.DataItemCollection;
+import infinityitemeditor.saving.SaveService;
 import infinityitemeditor.screen.HeadCollectionScreen;
 import infinityitemeditor.screen.MainScreen;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.util.InputMappings;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.container.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 
 public class KeyInputHandler {
@@ -54,7 +63,20 @@ public class KeyInputHandler {
                 Slot hoveredSlot = getHoveredSlot(mc.screen);
                 if (hoveredSlot != null && hoveredSlot.hasItem()) {
                     itemToEdit = hoveredSlot.getItem();
-                    slotIndex = getGlobalSlotIndex(hoveredSlot);
+                    
+                    // Вычисляем правильный номер слота в inventoryMenu для CCreativeInventoryActionPacket
+                    if (hoveredSlot.container instanceof PlayerInventory) {
+                        int invIndex = hoveredSlot.getSlotIndex();
+                        if (invIndex >= 0 && invIndex <= 8) {
+                            slotIndex = 36 + invIndex; // Hotbar -> 36-44
+                        } else if (invIndex >= 9 && invIndex <= 35) {
+                            slotIndex = invIndex; // Main inventory -> 9-35
+                        } else if (invIndex >= 36 && invIndex <= 39) {
+                            slotIndex = 44 - invIndex; // Armor -> 5-8
+                        } else if (invIndex == 40) {
+                            slotIndex = 45; // Offhand -> 45
+                        }
+                    }
                 }
             }
 
@@ -83,7 +105,20 @@ public class KeyInputHandler {
             mc.levelRenderer.allChanged();
 
         } else if (InfinityItemEditor.DEBUG && event.getKey() == DEBUG_KEY.getKey().getValue()) {
-            // Debug код опущен
+            ItemStack stack = mc.player.getMainHandItem();
+            if (stack.getItem() == Blocks.PURPLE_SHULKER_BOX.asItem()) {
+                DataItem item = new DataItem(stack);
+                File file = new File(SaveService.getInstance().getItemCollectionsDir(), new DataUUID().getData().toString() + ".nbt");
+                DataString name = new DataString(stack.getHoverName().getString());
+                DataItemCollection itemCollection = DataItemCollection.fromBlockEntityTag(file, item.getTag().getBlockEntityTag(), name);
+                try {
+                    itemCollection.save();
+                    SaveService.getInstance().getItemCollections().add(itemCollection);
+                    Minecraft.getInstance().player.sendMessage(new StringTextComponent("Added"), null);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -102,24 +137,6 @@ public class KeyInputHandler {
             }
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    /**
-     * Получает глобальный номер слота в контейнере.
-     * Работает и с official маппингами (поле "index"), и с MCP (поле "slotNumber").
-     */
-    private int getGlobalSlotIndex(Slot slot) {
-        try {
-            Field field = Slot.class.getField("index");
-            return (int) field.get(slot);
-        } catch (Exception e1) {
-            try {
-                Field field = Slot.class.getField("slotNumber");
-                return (int) field.get(slot);
-            } catch (Exception e2) {
-                return -1;
-            }
         }
     }
 
