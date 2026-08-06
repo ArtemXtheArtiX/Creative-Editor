@@ -109,7 +109,6 @@ public class ParentItemScreen extends ParentScreen {
 
             if (minecraft.hasSingleplayerServer()) {
                 minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
-                minecraft.player.inventory.setItem(slotId >= 36 && slotId <= 44 ? slotId - 36 : (slotId >= 9 && slotId <= 35 ? slotId : -1), item.getItemStack());
             } else {
                 minecraft.getConnection().send(new CCreativeInventoryActionPacket(slotId, item.getItemStack()));
             }
