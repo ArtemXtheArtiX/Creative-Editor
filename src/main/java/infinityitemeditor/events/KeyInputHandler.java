@@ -54,9 +54,10 @@ public class KeyInputHandler {
                 Slot hoveredSlot = getHoveredSlot(mc.screen);
                 if (hoveredSlot != null && hoveredSlot.hasItem()) {
                     itemToEdit = hoveredSlot.getItem();
+
                     // hoveredSlot.index — глобальный номер слота в контейнере
-                    // Для инвентаря игрока: 5-8 броня, 9-35 инвентарь, 36-44 хотбар, 45 оффхенд
-                    // 0-4 — крафтовые слоты, их пропускаем
+                    // Forge сам перемаппит это поле при загрузке мода
+                    // Для InventoryScreen: 5-8 броня, 9-35 инвентарь, 36-44 хотбар, 45 оффхенд
                     if (hoveredSlot.index >= 5) {
                         slotIndex = hoveredSlot.index;
                     }
