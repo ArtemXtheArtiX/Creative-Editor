@@ -69,7 +69,7 @@ public class ParentItemScreen extends ParentScreen {
 
             resetButton = addButton(new StyledButton(posX, (hasLastscreen ? posY : posY - 11), bwidth, 20, new TranslationTextComponent("gui.main.reset"), this::reset));
 
-            saveButton = hasLastscreen ? null : addButton(new StyledButton(posX, posY + 10, bwidth, 20, new TranslationTextComponent("gui.main.save"), this::save));
+            saveButton = addButton(new StyledButton(posX, posY + 10, bwidth, 20, new TranslationTextComponent("gui.main.save"), this::save));
 
             dropButton = addButton(new StyledButton(posX + bwidth + 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.drop"), this::drop));
 
@@ -114,15 +114,21 @@ public class ParentItemScreen extends ParentScreen {
     }
     
     public static void saveItem(DataItem item, Minecraft minecraft) {
-        if (item.getItem().getItem() != Items.AIR) {
-            int slotId = 36 + minecraft.player.inventory.selected;
-            if (minecraft.hasSingleplayerServer()) {
-                minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
-            } else {
-                minecraft.getConnection().send(new CCreativeInventoryActionPacket(slotId, item.getItemStack()));
-            }
+    if (item.getItem().getItem() != Items.AIR) {
+        int slotId = item.getSlot().get();
+        
+        // Если слот не задан (0) или вне диапазона инвентаря, используем выбранный слот хотбара
+        if (slotId < 0 || slotId > 40) {
+            slotId = 36 + minecraft.player.inventory.selected;
+        }
+        
+        if (minecraft.hasSingleplayerServer()) {
+            minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
+        } else {
+            minecraft.getConnection().send(new CCreativeInventoryActionPacket(slotId, item.getItemStack()));
         }
     }
+}
 
 
     public void drop(Widget w) {
