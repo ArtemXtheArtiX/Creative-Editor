@@ -21,36 +21,34 @@ import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 
 public class ParentItemScreen extends ParentScreen {
+
     protected static DataItem item;
 
-    // Back, reset, drop, save button (has essential buttons)
     protected boolean hasEssButtons = true;
     protected StyledButton backButton;
     protected StyledButton resetButton;
     protected StyledButton saveButton;
     protected StyledButton dropButton;
 
-    // render item
     protected boolean renderItem = true;
     protected boolean renderColorHelper = false;
     private ColorHelperWidget colorHelperWidget;
+
     protected float itemScale = 2.0f;
     protected float itemRotX = 0.0f;
     protected int correctX = 0;
 
-    // render tooltip top left
     protected boolean renderToolTip = false;
-
 
     public ParentItemScreen(ITextComponent title, Screen lastScreen, DataItem editing) {
         super(title, lastScreen);
         item = editing;
     }
 
-
     @Override
     protected void init() {
         super.init();
+
         buttons.clear();
         children().clear();
         renderWidgets.clear();
@@ -59,39 +57,28 @@ public class ParentItemScreen extends ParentScreen {
             int bwidth = 68;
             int posX = width / 2 - (bwidth / 2);
             int posY = height - 42;
-            boolean hasLastscreen = lastScreen != null;
-            String butCloseBack = hasLastscreen ? "gui.main.back" : "gui.main.close";
-            if (hasLastscreen) {
-                posY += 10;
+
+            // Всегда добавляем отступ, независимо от lastScreen
+            posY += 10;
+
+            backButton = addButton(new StyledButton(posX - bwidth - 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.back"), this::back));
+            resetButton = addButton(new StyledButton(posX, posY, bwidth, 20, new TranslationTextComponent("gui.main.reset"), this::reset));
+            saveButton = addButton(new StyledButton(posX + bwidth + 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.save"), this::save));
+
+            if (!minecraft.player.isCreative() && !minecraft.hasSingleplayerServer()) {
+                saveButton.active = false;
             }
 
-            backButton = addButton(new StyledButton(posX - bwidth - 1, posY, bwidth, 20, new TranslationTextComponent(butCloseBack), this::back));
-
-            resetButton = addButton(new StyledButton(posX, (hasLastscreen ? posY : posY - 11), bwidth, 20, new TranslationTextComponent("gui.main.reset"), this::reset));
-
-            saveButton = addButton(new StyledButton(posX, posY + 10, bwidth, 20, new TranslationTextComponent("gui.main.save"), this::save));
-
-            dropButton = addButton(new StyledButton(posX + bwidth + 1, posY, bwidth, 20, new TranslationTextComponent("gui.main.drop"), this::drop));
-
-            //if (!minecraft.player.abilities.instabuild) {
-            //im not sure why it was checking instabuild instead of creative...
-            if (!minecraft.player.isCreative()&&!minecraft.hasSingleplayerServer()) {
-                if (saveButton != null) saveButton.active = false;
-                dropButton.active = false;
+            if (renderColorHelper) {
+                colorHelperWidget = new ColorHelperWidget(children, (width - posX - bwidth * 3 - 10), 30, width, height);
+                renderWidgets.add(colorHelperWidget);
             }
-
-        }
-        if (renderColorHelper) {
-            colorHelperWidget = new ColorHelperWidget(children, (width - dropButton.x - dropButton.getWidth() - 10), 30, width, height);
-            renderWidgets.add(colorHelperWidget);
         }
     }
-
 
     public void back(Widget w) {
         minecraft.setScreen(lastScreen);
     }
-
 
     public void reset(Widget w) {
         DataItem dItem = new DataItem(item.getItem().getItem(), 1, new CompoundNBT(), item.getSlot().get());
@@ -108,28 +95,27 @@ public class ParentItemScreen extends ParentScreen {
     public void save(Widget w) {
         saveItem(item, minecraft);
     }
-    
-    public static void save(DataItem item) {
-        saveItem(item,Minecraft.getInstance());
-    }
-    
-    public static void saveItem(DataItem item, Minecraft minecraft) {
-    if (item.getItem().getItem() != Items.AIR) {
-        int slotId = item.getSlot().get();
-        
-        // Если слот не задан (0) или вне диапазона инвентаря, используем выбранный слот хотбара
-        if (slotId < 0 || slotId > 40) {
-            slotId = 36 + minecraft.player.inventory.selected;
-        }
-        
-        if (minecraft.hasSingleplayerServer()) {
-            minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
-        } else {
-            minecraft.getConnection().send(new CCreativeInventoryActionPacket(slotId, item.getItemStack()));
-        }
-    }
-}
 
+    public static void save(DataItem item) {
+        saveItem(item, Minecraft.getInstance());
+    }
+
+    public static void saveItem(DataItem item, Minecraft minecraft) {
+        if (item.getItem().getItem() != Items.AIR) {
+            int slotId = item.getSlot().get();
+            
+            // Если слот не задан (0) или вне диапазона инвентаря, используем выбранный слот хотбара
+            if (slotId < 0 || slotId > 40) {
+                slotId = 36 + minecraft.player.inventory.selected;
+            }
+            
+            if (minecraft.hasSingleplayerServer()) {
+                minecraft.getSingleplayerServer().getPlayerList().getPlayer(minecraft.player.getUUID()).inventoryMenu.setItem(slotId, item.getItemStack());
+            } else {
+                minecraft.getConnection().send(new CCreativeInventoryActionPacket(slotId, item.getItemStack()));
+            }
+        }
+    }
 
     public void drop(Widget w) {
         if (item.getItem().getItem() != Items.AIR) {
@@ -149,11 +135,9 @@ public class ParentItemScreen extends ParentScreen {
         return "/give @p " + resource_location + nbt + amount;
     }
 
-
     public DataItem getItem() {
         return item;
     }
-
 
     public void setRenderItem(boolean shouldRender, float scale) {
         this.renderItem = shouldRender;
@@ -187,12 +171,12 @@ public class ParentItemScreen extends ParentScreen {
         super.mainRender(matrix, mouseX, mouseY, p3, color);
     }
 
-
     @Override
     public void overlayRender(MatrixStack matrix, int mouseX, int mouseY, float p3, Color color) {
         super.overlayRender(matrix, mouseX, mouseY, p3, color);
-        // Item (Tooltip must render last or colors will be messed up)
+
         GuiUtil.addToolTip(matrix, this, dropButton, mouseX, mouseY, I18n.get("gui.main.copyclipboard"));
+
         if (renderItem) {
             renderItem(matrix, mouseX, mouseY, color, item);
         }
@@ -200,13 +184,14 @@ public class ParentItemScreen extends ParentScreen {
 
     protected void renderItem(MatrixStack matrix, int mouseX, int mouseY, Color color, DataItem item) {
         ItemStack stack = item.getItemStack();
-
         Item ite = item.getItem().getItem();
+
         int x = width / 2;
         int y = 60;
         int xFrameStart = x - 19 + correctX;
         int xFrameEnd = x + 19;
         int yFrameStart = 41;
+
         if (ite == Items.AIR) {
             drawCenteredString(matrix, font, ite.getName(stack).getString(), x, y - 3, color.getInt());
         } else {
@@ -217,13 +202,10 @@ public class ParentItemScreen extends ParentScreen {
             RenderSystem.popMatrix();
         }
 
-
-        // TODO Item scale support
         if (GuiUtil.isMouseIn(mouseX, mouseY, width / 2 - 17, 43, 36, 36)) {
             itemRotX += 0.25;
             if (itemScale == 2f)
                 GuiUtil.drawFrame(matrix, xFrameStart, yFrameStart, xFrameEnd, 79, 1, StyleManager.getCurrentStyle().getFGColor(true, true));
-
             renderTooltip(matrix, stack, mouseX, mouseY);
         } else {
             itemRotX = 0f;
