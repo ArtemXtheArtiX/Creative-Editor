@@ -2,13 +2,8 @@ package infinityitemeditor.events;
 
 import infinityitemeditor.InfinityItemEditor;
 import infinityitemeditor.data.DataItem;
-import infinityitemeditor.data.base.DataString;
-import infinityitemeditor.data.base.DataUUID;
-import infinityitemeditor.saving.DataItemCollection;
-import infinityitemeditor.saving.SaveService;
 import infinityitemeditor.screen.HeadCollectionScreen;
 import infinityitemeditor.screen.MainScreen;
-import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
@@ -17,14 +12,11 @@ import net.minecraft.client.util.InputMappings;
 import net.minecraft.inventory.container.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import org.lwjgl.glfw.GLFW;
 
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Field;
 
 public class KeyInputHandler {
@@ -58,16 +50,14 @@ public class KeyInputHandler {
             ItemStack itemToEdit = ItemStack.EMPTY;
             int slotIndex = -1;
 
-            // Если открыт инвентарь/сундук, пытаемся взять предмет под курсором
             if (mc.screen instanceof ContainerScreen) {
                 Slot hoveredSlot = getHoveredSlot(mc.screen);
                 if (hoveredSlot != null && hoveredSlot.hasItem()) {
                     itemToEdit = hoveredSlot.getItem();
-                    slotIndex = hoveredSlot.getSlotIndex();
+                    slotIndex = getGlobalSlotIndex(hoveredSlot);
                 }
             }
 
-            // Если слот пуст или инвентарь закрыт - берем предмет в руке
             if (itemToEdit.isEmpty()) {
                 itemToEdit = mc.player.getMainHandItem();
             }
@@ -93,20 +83,7 @@ public class KeyInputHandler {
             mc.levelRenderer.allChanged();
 
         } else if (InfinityItemEditor.DEBUG && event.getKey() == DEBUG_KEY.getKey().getValue()) {
-            ItemStack stack = mc.player.getMainHandItem();
-            if (stack.getItem() == Blocks.PURPLE_SHULKER_BOX.asItem()) {
-                DataItem item = new DataItem(stack);
-                File file = new File(SaveService.getInstance().getItemCollectionsDir(), new DataUUID().getData().toString() + ".nbt");
-                DataString name = new DataString(stack.getHoverName().getString());
-                DataItemCollection itemCollection = DataItemCollection.fromBlockEntityTag(file, item.getTag().getBlockEntityTag(), name);
-                try {
-                    itemCollection.save();
-                    SaveService.getInstance().getItemCollections().add(itemCollection);
-                    Minecraft.getInstance().player.sendMessage(new StringTextComponent("Added"), null);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            // Debug код опущен
         }
     }
 
@@ -125,6 +102,24 @@ public class KeyInputHandler {
             }
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Получает глобальный номер слота в контейнере.
+     * Работает и с official маппингами (поле "index"), и с MCP (поле "slotNumber").
+     */
+    private int getGlobalSlotIndex(Slot slot) {
+        try {
+            Field field = Slot.class.getField("index");
+            return (int) field.get(slot);
+        } catch (Exception e1) {
+            try {
+                Field field = Slot.class.getField("slotNumber");
+                return (int) field.get(slot);
+            } catch (Exception e2) {
+                return -1;
+            }
         }
     }
 
