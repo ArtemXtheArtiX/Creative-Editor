@@ -54,15 +54,11 @@ public class KeyInputHandler {
                 Slot hoveredSlot = getHoveredSlot(mc.screen);
                 if (hoveredSlot != null && hoveredSlot.hasItem()) {
                     itemToEdit = hoveredSlot.getItem();
-
-                    // Получаем глобальный номер слота в контейнере напрямую.
-                    // Этот номер совпадает с тем, что ожидает CCreativeInventoryActionPacket:
-                    // 5-8 = броня, 9-35 = основной инвентарь, 36-44 = хотбар, 45 = оффхенд
-                    int globalSlot = getGlobalSlotIndex(hoveredSlot);
-
-                    // Crafting слоты (0-4) не поддерживаются для сохранения
-                    if (globalSlot >= 5 && globalSlot <= 45) {
-                        slotIndex = globalSlot;
+                    // hoveredSlot.index — глобальный номер слота в контейнере
+                    // Для инвентаря игрока: 5-8 броня, 9-35 инвентарь, 36-44 хотбар, 45 оффхенд
+                    // 0-4 — крафтовые слоты, их пропускаем
+                    if (hoveredSlot.index >= 5) {
+                        slotIndex = hoveredSlot.index;
                     }
                 }
             }
@@ -111,25 +107,6 @@ public class KeyInputHandler {
             }
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    /**
-     * Получает глобальный номер слота в контейнере через рефлексию.
-     * Работает с official mappings (поле "index") и MCP mappings (поле "slotNumber").
-     * Этот номер можно использовать напрямую для CCreativeInventoryActionPacket.
-     */
-    private int getGlobalSlotIndex(Slot slot) {
-        try {
-            Field field = Slot.class.getField("index");
-            return (int) field.get(slot);
-        } catch (Exception e1) {
-            try {
-                Field field = Slot.class.getField("slotNumber");
-                return (int) field.get(slot);
-            } catch (Exception e2) {
-                return -1;
-            }
         }
     }
 
