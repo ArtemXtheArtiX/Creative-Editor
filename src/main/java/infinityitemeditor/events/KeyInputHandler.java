@@ -2,21 +2,30 @@ package infinityitemeditor.events;
 
 import infinityitemeditor.InfinityItemEditor;
 import infinityitemeditor.data.DataItem;
+import infinityitemeditor.data.base.DataString;
+import infinityitemeditor.data.base.DataUUID;
+import infinityitemeditor.saving.DataItemCollection;
+import infinityitemeditor.saving.SaveService;
 import infinityitemeditor.screen.HeadCollectionScreen;
 import infinityitemeditor.screen.MainScreen;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.util.InputMappings;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.container.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 
 public class KeyInputHandler {
@@ -54,18 +63,26 @@ public class KeyInputHandler {
                 Slot hoveredSlot = getHoveredSlot(mc.screen);
                 if (hoveredSlot != null && hoveredSlot.hasItem()) {
                     itemToEdit = hoveredSlot.getItem();
-
-                    // hoveredSlot.index — глобальный номер слота в контейнере
-                    // Forge сам перемаппит это поле при загрузке мода
-                    // Для InventoryScreen: 5-8 броня, 9-35 инвентарь, 36-44 хотбар, 45 оффхенд
-                    if (hoveredSlot.index >= 5) {
-                        slotIndex = hoveredSlot.index;
+                    
+                    if (hoveredSlot.container instanceof PlayerInventory) {
+                        int invIndex = hoveredSlot.getSlotIndex();
+                        
+                        if (invIndex >= 0 && invIndex <= 8) {
+                            slotIndex = 36 + invIndex;
+                        } else if (invIndex >= 9 && invIndex <= 35) {
+                            slotIndex = invIndex;
+                        } else if (invIndex >= 36 && invIndex <= 39) {
+                            slotIndex = 41 - invIndex;
+                        } else if (invIndex == 40) {
+                            slotIndex = 45;
+                        }
                     }
                 }
             }
 
             if (itemToEdit.isEmpty()) {
                 itemToEdit = mc.player.getMainHandItem();
+                slotIndex = 36 + mc.player.inventory.selected;
             }
 
             DataItem dataItem = new DataItem(itemToEdit);
@@ -89,7 +106,20 @@ public class KeyInputHandler {
             mc.levelRenderer.allChanged();
 
         } else if (InfinityItemEditor.DEBUG && event.getKey() == DEBUG_KEY.getKey().getValue()) {
-            // Debug code
+            ItemStack stack = mc.player.getMainHandItem();
+            if (stack.getItem() == Blocks.PURPLE_SHULKER_BOX.asItem()) {
+                DataItem item = new DataItem(stack);
+                File file = new File(SaveService.getInstance().getItemCollectionsDir(), new DataUUID().getData().toString() + ".nbt");
+                DataString name = new DataString(stack.getHoverName().getString());
+                DataItemCollection itemCollection = DataItemCollection.fromBlockEntityTag(file, item.getTag().getBlockEntityTag(), name);
+                try {
+                    itemCollection.save();
+                    SaveService.getInstance().getItemCollections().add(itemCollection);
+                    Minecraft.getInstance().player.sendMessage(new StringTextComponent("Added"), null);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
