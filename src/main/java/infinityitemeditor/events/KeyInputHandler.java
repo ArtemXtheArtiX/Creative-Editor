@@ -70,7 +70,44 @@ public class KeyInputHandler {
                 itemToEdit = mc.player.getMainHandItem();
             }
 
-            mc.setScreen(new MainScreen(mc.screen, new DataItem(itemToEdit)));
+            // Получаем индекс слота, если предмет был взят из инвентаря
+int slotIndex = -1;
+if (mc.screen instanceof ContainerScreen) {
+    Slot hoveredSlot = getHoveredSlot(mc.screen);
+    if (hoveredSlot != null && hoveredSlot.hasItem()) {
+        slotIndex = hoveredSlot.getSlotIndex();
+        
+        // Для инвентаря игрока слоты 0-8 это хотбар, 9-35 это основной инвентарь
+        // Для ContainerScreen слоты игрока обычно начинаются с индекса, зависящего от контейнера
+        // В большинстве случаев для инвентаря игрока: 0-8 = хотбар, 9-35 = main inventory
+        // Но в ContainerScreen это может быть смещено
+        // Поэтому используем container.slotNumber для точного индекса
+        slotIndex = hoveredSlot.slotNumber;
+    }
+}
+
+DataItem dataItem = new DataItem(itemToEdit);
+if (slotIndex >= 0) {
+    dataItem.getSlot().set(slotIndex);
+}
+
+mc.setScreen(new MainScreen(mc.screen, dataItem));private Slot getHoveredSlot(Screen screen) {
+    try {
+        Field field = ContainerScreen.class.getDeclaredField("hoveredSlot");
+        field.setAccessible(true);
+        return (Slot) field.get(screen);
+    } catch (NoSuchFieldException e1) {
+        try {
+            Field field = ContainerScreen.class.getDeclaredField("field_147006_u");
+            field.setAccessible(true);
+            return (Slot) field.get(screen);
+        } catch (Exception e2) {
+            return null;
+        }
+    } catch (Exception e) {
+        return null;
+    }
+}
 
         } else if (event.getKey() == OFF_HAND_SWING.getKey().getValue()) {
             assert mc.player != null;
@@ -104,25 +141,74 @@ public class KeyInputHandler {
      * Получает слот под курсором через рефлексию.
      * Это безопасно и работает вне зависимости от выбранных маппингов (official/snapshot).
      */
-    private Slot getHoveredSlot(Screen screen) {
+    /**
+ * Получает предмет из слота, на который наведён курсор мыши.
+ * Возвращает DataItem с сохранённым индексом слота для последующего сохранения.
+ */
+private ItemStack getHoveredItem(Minecraft mc) {
+    Screen screen = mc.screen;
+    if (!(screen instanceof ContainerScreen)) {
+        return ItemStack.EMPTY;
+    }
+
+    try {
+        ContainerScreen<?> containerScreen = (ContainerScreen<?>) screen;
+
+        // Получаем координаты мыши
+        double mouseX = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getWidth();
+        double mouseY = mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getHeight();
+
+        // Пробуем разные варианты методов для получения слота
+        Slot slot = null;
+        
         try {
-            // Официальные маппинги 1.16.5
-            Field field = ContainerScreen.class.getDeclaredField("hoveredSlot");
+            Method findSlotMethod = ContainerScreen.class.getDeclaredMethod("findSlot", double.class, double.class);
+            findSlotMethod.setAccessible(true);
+            slot = (Slot) findSlotMethod.invoke(containerScreen, mouseX, mouseY);
+        } catch (NoSuchMethodException e1) {
+            try {
+                Method getSlotAtMethod = ContainerScreen.class.getDeclaredMethod("getSlotAt", double.class, double.class);
+                getSlotAtMethod.setAccessible(true);
+                slot = (Slot) getSlotAtMethod.invoke(containerScreen, mouseX, mouseY);
+            } catch (NoSuchMethodException e2) {
+                try {
+                    java.lang.reflect.Field hoveredSlotField = ContainerScreen.class.getDeclaredField("hoveredSlot");
+                    hoveredSlotField.setAccessible(true);
+                    slot = (Slot) hoveredSlotField.get(containerScreen);
+                } catch (Exception e3) {
+                    InfinityItemEditor.LOGGER.warn("Could not find method to get hovered slot");
+                }
+            }
+        }
+
+        if (slot != null && slot.hasItem()) {
+            return slot.getItem();
+        }
+
+    } catch (Exception e) {
+        InfinityItemEditor.LOGGER.warn("Failed to get hovered slot: " + e.getMessage());
+    }
+
+    return ItemStack.EMPTY;
+}
+
+private Slot getHoveredSlot(Screen screen) {
+    try {
+        Field field = ContainerScreen.class.getDeclaredField("hoveredSlot");
+        field.setAccessible(true);
+        return (Slot) field.get(screen);
+    } catch (NoSuchFieldException e1) {
+        try {
+            Field field = ContainerScreen.class.getDeclaredField("field_147006_u");
             field.setAccessible(true);
             return (Slot) field.get(screen);
-        } catch (NoSuchFieldException e1) {
-            try {
-                // MCP / Snapshot маппинги
-                Field field = ContainerScreen.class.getDeclaredField("field_147006_u");
-                field.setAccessible(true);
-                return (Slot) field.get(screen);
-            } catch (Exception e2) {
-                return null;
-            }
-        } catch (Exception e) {
+        } catch (Exception e2) {
             return null;
         }
+    } catch (Exception e) {
+        return null;
     }
+}
 
     private static KeyBinding registerKeybind(String name, int keyCode) {
         KeyBinding key = new KeyBinding("key." + name, keyCode, InfinityItemEditor.NAME);
